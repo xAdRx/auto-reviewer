@@ -13,22 +13,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Fetch Changed Files
-        id: get_files
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          # Get the list of changed files using `gh pr diff`
-          CHANGED_FILES=$(gh pr diff ${{ github.event.number }} --name-only)
-          echo "Changed files: $CHANGED_FILES"
-
-          # Save the changed files to an environment variable
-          echo "changed_files=$CHANGED_FILES" >> $GITHUB_ENV
-
       - name: Review Changes
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          CHANGED_FILES=$(gh pr diff ${{ github.event.number }} --name-only)
           for file in $CHANGED_FILES; do
             DIFF=$(gh pr diff ${{ github.event.number }} -- "$file")
             echo "Diff for $file: $DIFF"
