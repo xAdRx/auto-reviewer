@@ -64,43 +64,39 @@ jobs:
                 fi
 
                 echo "Processing lines from $START_LINE to $END_LINE in $file"
+
+                # Extract the content between the START_LINE and END_LINE
                 CONTENT=$(sed -n "${START_LINE},${END_LINE}p" "$file")
 
-                COMMENT=$(curl https://api.openai.com/v1/chat/completions \
+                # Call the GPT API for code review
+                COMMENT=$(curl -s https://api.openai.com/v1/chat/completions \
                   -H "Content-Type: application/json" \
                   -H "Authorization: Bearer $GPT_TOKEN" \
                   -d '{
-                      "model": "gpt-4o",
+                      "model": "gpt-4",
                       "messages": [
                         {
-                          "role": "developer",
-                          "content": "You are a helpful developer. Your role is to make a simple code review of provided code. Try to be as simple as possible but remain professional and show the problems"
+                          "role": "system",
+                          "content": "You are a helpful developer. Your role is to make a simple code review of the provided code. Be clear and concise."
                         },
                         {
                           "role": "user",
-                          "content": $CONTENT
+                          "content": "'"$CONTENT"'"
                         }
                       ]
                     }')
-                    # | jq -r '.choices.[].message.content')
 
-                echo "Conent of $file for review is $CONTENT"
-                echo "\n\n"
-                echo "Review of the code: $COMMENT"
+                # Extract the message content from the response
+                COMMENT_TEXT=$(echo "$COMMENT" | jq -r '.choices[0].message.content')
+
+                echo "Review of the code: $COMMENT_TEXT"
 
                 # Check if there's an existing comment for this range
-                if [ $START_LINE -eq $END_LINE ];then
-                  EXISTING_COMMENT_ID=$(echo "$EXISTING_COMMENTS" | jq -r \
-                    --arg path "$file" \
-                    --argjson start "$START_LINE" \
-                    '.[] | select(.path == $path and .line == $start) | .id')
-                else
-                  EXISTING_COMMENT_ID=$(echo "$EXISTING_COMMENTS" | jq -r \
-                    --arg path "$file" \
-                    --argjson start "$START_LINE" \
-                    --argjson end "$END_LINE" \
-                    '.[] | select(.path == $path and .start_line == $start and .end_line == $end) | .id')
-                fi
+                EXISTING_COMMENT_ID=$(echo "$EXISTING_COMMENTS" | jq -r \
+                  --arg path "$file" \
+                  --argjson start "$START_LINE" \
+                  --argjson end "$END_LINE" \
+                  '.[] | select(.path == $path and .line >= $start and .line <= $end) | .id')
 
                 if [ -n "$EXISTING_COMMENT_ID" ]; then
                   # Update existing comment
@@ -110,7 +106,7 @@ jobs:
                     -H "Accept: application/vnd.github+json" \
                     -H "X-GitHub-Api-Version: 2022-11-28" \
                     repos/${{ github.repository }}/pulls/comments/$EXISTING_COMMENT_ID \
-                    -f "body=Resolved review comment for $file from lines $START_LINE to $END_LINE"
+                    -f "body=$COMMENT_TEXT"
                 else
                   # Add a new review comment for the entire range
                   echo "Adding new comment for the range $START_LINE to $END_LINE in $file"
@@ -120,7 +116,7 @@ jobs:
                       -H "Accept: application/vnd.github+json" \
                       -H "X-GitHub-Api-Version: 2022-11-28" \
                       repos/${{ github.repository }}/pulls/${{ github.event.number }}/comments \
-                      -f "body=$COMMENT" \
+                      -f "body=$COMMENT_TEXT" \
                       -f "commit_id=${{ github.event.pull_request.head.sha }}" \
                       -F "line=$START_LINE" \
                       -f "side=RIGHT" \
@@ -131,7 +127,7 @@ jobs:
                       -H "Accept: application/vnd.github+json" \
                       -H "X-GitHub-Api-Version: 2022-11-28" \
                       repos/${{ github.repository }}/pulls/${{ github.event.number }}/comments \
-                      -f "body=$COMMENT" \
+                      -f "body=$COMMENT_TEXT" \
                       -f "commit_id=${{ github.event.pull_request.head.sha }}" \
                       -F "start_line=$START_LINE" \
                       -F "line=$END_LINE" \
