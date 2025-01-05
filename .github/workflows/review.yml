@@ -57,9 +57,10 @@ jobs:
             while IFS= read -r diff_header; do
               # Ensure to capture only lines starting with `@@`
               if [[ $diff_header =~ ^@@ ]]; then
-                # Extract start and end line numbers from the diff header (e.g. @@ -10,6 +10,7 @@)
-                START_LINE=$(echo "$diff_header" | grep -oP '\+\d+' | head -n 1 | tr -d '+')
-                END_LINE=$(echo "$diff_header" | grep -oP '\+\d+' | tail -n 1 | tr -d '+')
+                # Extract start and end line numbers from the diff header (e.g. @@ -3,109 +3,15 @@)
+                START_LINE=$(echo $diff_header | sed -n 's/@@ -\([0-9]*\),[0-9]* +\([0-9]*\),[0-9]* @@/\1/p')
+                END_LINE=$(echo $diff_header | sed -n 's/@@ -[0-9]*,\([0-9]*\) +[0-9]*,[0-9]* @@/\1/p')
+
 
                 if [ -z "$START_LINE" ] || [ -z "$END_LINE" ]; then
                   continue
