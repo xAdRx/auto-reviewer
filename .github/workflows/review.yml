@@ -75,8 +75,6 @@ jobs:
                 -H "X-GitHub-Api-Version: 2022-11-28" \
                 repos/${{ github.repository }}/pulls/${{ github.event.number }}/comments \
                 -f path="$file" \
-                -F start_line=$LINE_NUMBER \
-                -F line=$LINE_NUMBER\
                 -f body="Updated review comment for $file at line $LINE_NUMBER" \
                 -f "commit_id=${{ github.sha }}"\
                 -F position=$POSITION
