@@ -80,6 +80,6 @@ jobs:
               repos/${{ github.repository }}/pulls/${{ github.event.number }}/comments \
               -f "body=$COMMENT_TEXT" \
               -f "commit_id=${{ github.event.pull_request.head.sha }}" \
-              -f "subject_type:file" \
+              -f "subject_type=file" \
               -f "path=$file"
           done
