@@ -9,7 +9,7 @@ jobs:
   auto-review:
     runs-on: ubuntu-latest
     permissions:
-      issues: read
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
 
@@ -17,51 +17,60 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # Get list of changed files
           CHANGED_FILES=$(gh pr diff ${{ github.event.number }} --name-only)
+          if [ -z "$CHANGED_FILES" ]; then
+            echo "No changed files found. Exiting."
+            exit 0
+          fi
+
+          # Fetch JSON data for changed files
+          FILES_JSON=$(gh api \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            repos/${{ github.repository }}/pulls/${{ github.event.number }}/files)
+
           echo "Changed files: $CHANGED_FILES"
+
+          # Loop through each changed file
           for file in $CHANGED_FILES; do
-            PATCH=$(gh api \
-              -H "Accept: application/vnd.github+json" \
-              -H "X-GitHub-Api-Version: 2022-11-28" \
-              repos/${{ github.repository }}/pulls/${{ github.event.number }}/files \
-              --jq ".[] | select(.filename == \"$file\") | .patch")
+            echo "Processing file: $file"
+
+            # Extract patch for the file
+            PATCH=$(echo "$FILES_JSON" | jq -r ".[] | select(.filename == \"$file\") | .patch")
             if [ -z "$PATCH" ]; then
               echo "No patch found for $file."
               continue
             fi
-            echo "Diff for $file: $DIFF"
 
+            echo "Patch for $file:"
+            echo "$PATCH"
+
+            # Fetch existing comments
             EXISTING_COMMENTS=$(gh api repos/${{ github.repository }}/pulls/${{ github.event.number }}/comments)
 
-            # Parse diff and loop through changed lines
-            echo "$DIFF" | while IFS= read -r line; do
-              # Extract line numbers (adjust parsing as needed)
-              LINE_NUMBER=$(echo "$line" | grep -oP '^@@ -\d+,\d+ \+\d+(,\d+)? @@' | grep -oP '\+\d+' | tr -d '+')
-              [ -z "$LINE_NUMBER" ] && continue
+            # Parse the patch for changed lines
+            echo "$PATCH" | grep -E '^@@' | while IFS= read -r diff_header; do
+              LINE_NUMBER=$(echo "$diff_header" | grep -oP '\+\d+' | tr -d '+')
+              if [ -z "$LINE_NUMBER" ]; then
+                continue
+              fi
 
-              # Check if there's an existing comment on this line
+              echo "Processing line: $LINE_NUMBER"
+
+              # Check if there's an existing comment for this line
               EXISTING_COMMENT_ID=$(echo "$EXISTING_COMMENTS" | jq -r --arg path "$file" --argjson line "$LINE_NUMBER" '.[] | select(.path == $path and .line == $line) | .id')
               if [ -n "$EXISTING_COMMENT_ID" ]; then
                 # Delete existing comment
+                echo "Deleting existing comment ID: $EXISTING_COMMENT_ID"
                 gh api -X DELETE repos/${{ github.repository }}/pulls/comments/$EXISTING_COMMENT_ID
               fi
 
               # Add a new review comment
-              gh api -X POST repos/${{ github.repository }}/pulls/${{ github.event.number }}/comments -f body="Updated review comment for $file at line $LINE_NUMBER" -f path="$file" -f line="$LINE_NUMBER"
+              echo "Adding new comment to $file at line $LINE_NUMBER"
+              gh api -X POST repos/${{ github.repository }}/pulls/${{ github.event.number }}/comments \
+                -f body="Updated review comment for $file at line $LINE_NUMBER" \
+                -f path="$file" \
+                -f line="$LINE_NUMBER"
             done
           done
-
-          #   # Post a comment to the pull request
-          #   gh api \
-          #     --method POST \
-          #     -H "Accept: application/vnd.github+json" \
-          #     -H "X-GitHub-Api-Version: 2022-11-28" \
-          #     /repos/${{ github.repository }}/pulls/${{ github.event.number }}/comments \
-          #     -f body="Reviewing changes in $file: $DIFF" \
-          #     -f commit_id=$(git rev-parse HEAD) \
-          #     -f path="$file" \
-          #     -f start_line=1 \
-          #     -f start_side=RIGHT \
-          #     -f line=1 \
-          #     -f side=RIGHT
-          # done
