@@ -56,7 +56,6 @@ jobs:
             # Parse the patch for changed lines
             echo "$PATCH" | grep -E '^@@' | while IFS= read -r diff_header; do
               LINE_NUMBER=$(echo "$diff_header" | grep -oP '\+\d+' | tr -d '+')
-              POSITION=$(($LINE_NUMBER - 1))
               if [ -z "$LINE_NUMBER" ]; then
                 continue
               fi
@@ -79,8 +78,9 @@ jobs:
                 -H "X-GitHub-Api-Version: 2022-11-28" \
                 repos/${{ github.repository }}/pulls/${{ github.event.number }}/comments \
                 -f "body=Updated review comment for $file at line $LINE_NUMBER" \
-                -f "commit_id=${{ github.sha }}" \
-                -F "position=$POSITION" \
+                -f "commit_id=${{ github.event.pull_request.head.sha }}" \
+                -F "line=$LINE_NUMBER" \
+                -f "side=RIGHT" \
                 -f "path=$file"
             done
           done
