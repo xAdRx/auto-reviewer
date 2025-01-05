@@ -81,7 +81,8 @@ jobs:
                           "content": $CONTENT
                         }
                       ]
-                    }')# | jq -r '.choices.[].message.content')
+                    }')
+                    # | jq -r '.choices.[].message.content')
 
                 echo "Conent of $file for review is $CONTENT"
                 echo "\n\n"
