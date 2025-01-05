@@ -57,11 +57,12 @@ jobs:
               if [[ $diff_header =~ ^@@ ]]; then
                 echo $diff_header
                 # Extract start and end line numbers from the diff header
-                START_LINE=$(echo $diff_header | sed -n 's/@@ -\([0-9]*\),[0-9]* +[0-9]*,[0-9]* @@/\1/p')
+                START_LINE=$(echo $diff_header | sed -n 's/@@ -\([0-9]*\),[0-9]* +[0-9]*,[0-9]* @@/\1/p' | grep -o '[0-9]\+')
                 START_LINE=$(expr $START_LINE + 3)
 
-                END_LINE=$(echo $diff_header | sed -n 's/@@ -[0-9]*,[0-9]* +\([0-9]*\),[0-9]* @@/\1/p')
+                END_LINE=$(echo $diff_header | sed -n 's/@@ -[0-9]*,[0-9]* +\([0-9]*\),[0-9]* @@/\1/p' | grep -o '[0-9]\+')
                 END_LINE=$(expr $END_LINE + 3)
+
                 if [ -z "$START_LINE" ] || [ -z "$END_LINE" ]; then
                   continue
                 fi
