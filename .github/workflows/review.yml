@@ -113,7 +113,7 @@ jobs:
                       -f "body=Review comment for $file from lines $START_LINE to $END_LINE" \
                       -f "commit_id=${{ github.event.pull_request.head.sha }}" \
                       -F "start_line=$START_LINE" \
-                      -F "end_line=$END_LINE" \
+                      -F "line=$END_LINE" \
                       -f "side=RIGHT" \
                       -f "path=$file"
                   fi
