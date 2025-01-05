@@ -55,7 +55,7 @@ jobs:
 
             # Parse the patch for changed lines
             echo "$PATCH" | grep -E '^@@' | while IFS= read -r diff_header; do
-              $LINE_NUMBER-1=$(echo "$diff_header" | grep -oP '\+\d+' | tr -d '+')
+              LINE_NUMBER=$(echo "$diff_header" | grep -oP '\+\d+' | tr -d '+')
               LINE=$(($LINE_NUMBER - 1))
               if [ -z "$LINE_NUMBER" ]; then
                 continue
