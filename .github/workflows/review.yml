@@ -60,40 +60,39 @@ jobs:
                 # Extract start and end line numbers from the diff header (e.g. @@ -10,6 +10,7 @@)
                 START_LINE=$(echo "$diff_header" | grep -oP '\+\d+' | head -n 1 | tr -d '+')
                 END_LINE=$(echo "$diff_header" | grep -oP '\+\d+' | tail -n 1 | tr -d '+')
+
                 if [ -z "$START_LINE" ] || [ -z "$END_LINE" ]; then
                   continue
                 fi
 
                 echo "Processing lines from $START_LINE to $END_LINE in $file"
 
-                # Check if there's an existing comment on these lines
-                for LINE in $(seq $START_LINE $END_LINE); do
-                  EXISTING_COMMENT_ID=$(echo "$EXISTING_COMMENTS" | jq -r --arg path "$file" --argjson line "$LINE" '.[] | select(.path == $path and .line == $line) | .id')
+                EXISTING_COMMENT_ID=$(echo "$EXISTING_COMMENTS" | jq -r --arg path "$file" --argjson line "$LINE" '.[] | select(.path == $path and .line == $line) | .id')
 
-                  if [ -n "$EXISTING_COMMENT_ID" ]; then
-                    # Update existing comment
-                    echo "Updating existing comment ID: $EXISTING_COMMENT_ID"
-                    gh api \
-                      --method PATCH \
-                      -H "Accept: application/vnd.github+json" \
-                      -H "X-GitHub-Api-Version: 2022-11-28" \
-                      repos/${{ github.repository }}/pulls/comments/$EXISTING_COMMENT_ID \
-                      -f "body=Resolved review comment for $file at line $LINE"
-                  else
-                    # Add a new review comment
-                    echo "Adding new comment to $file at line $LINE"
-                    gh api \
-                      --method POST \
-                      -H "Accept: application/vnd.github+json" \
-                      -H "X-GitHub-Api-Version: 2022-11-28" \
-                      repos/${{ github.repository }}/pulls/${{ github.event.number }}/comments \
-                      -f "body=Review comment for $file at line $LINE" \
-                      -f "commit_id=${{ github.event.pull_request.head.sha }}" \
-                      -F "line=$LINE" \
-                      -f "side=RIGHT" \
-                      -f "path=$file"
-                  fi
-                done
+                if [ -n "$EXISTING_COMMENT_ID" ]; then
+                  # Update existing comment
+                  echo "Updating existing comment ID: $EXISTING_COMMENT_ID"
+                  gh api \
+                    --method PATCH \
+                    -H "Accept: application/vnd.github+json" \
+                    -H "X-GitHub-Api-Version: 2022-11-28" \
+                    repos/${{ github.repository }}/pulls/comments/$EXISTING_COMMENT_ID \
+                    -f "body=Resolved review comment for $file at line $LINE"
+                else
+                  # Add a new review comment
+                  echo "Adding new comment to $file at line $LINE"
+                  gh api \
+                    --method POST \
+                    -H "Accept: application/vnd.github+json" \
+                    -H "X-GitHub-Api-Version: 2022-11-28" \
+                    repos/${{ github.repository }}/pulls/${{ github.event.number }}/comments \
+                    -f "body=Review comment for $file at line $LINE" \
+                    -f "commit_id=${{ github.event.pull_request.head.sha }}" \
+                    -F "start_line=$START_LINE" \
+                    -F "end_line=$END_LINE" \
+                    -f "side=RIGHT" \
+                    -f "path=$file"
+                fi
               fi
             done <<< "$PATCH"
           done
