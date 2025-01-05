@@ -15,6 +15,7 @@ jobs:
 
       - name: Review Changes
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GPT_TOKEN: ${{ secrets.GPT_TOKEN }}
         run: |
           # Get list of changed files
