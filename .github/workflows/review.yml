@@ -3,15 +3,63 @@ name: Auto-Reviewer
 on:
   pull_request:
     branches: [ "master" ]
+  workflow_dispatch:
 
 jobs:
   auto-review:
     runs-on: ubuntu-latest
-
+    permissions:
+      issues: read
     steps:
       - uses: actions/checkout@v4
 
-      - name: Run a multi-line script
+      - name: Fetch Changed Files
+        id: get_files
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo Add other actions to build,
-          echo test, and deploy your project.
+          CHANGED_FILES=$(git diff-tree --no-commit-id --name-only -r ${{ github.sha }})
+          echo "changed_files=$CHANGED_FILES" >> $GITHUB_ENV
+
+      - name: Review Changes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          for file in $CHANGED_FILES; do
+            DIFF=$(gh pr diff ${{ github.event.number }} -- "$file")
+            echo "Diff for $file: $DIFF"
+
+            EXISTING_COMMENTS=$(gh api repos/${{ github.repository }}/pulls/${{ github.event.number }}/comments)
+
+            # Parse diff and loop through changed lines
+            echo "$DIFF" | while IFS= read -r line; do
+              # Extract line numbers (adjust parsing as needed)
+              LINE_NUMBER=$(echo "$line" | grep -oP '^@@ -\d+,\d+ \+\d+(,\d+)? @@' | grep -oP '\+\d+' | tr -d '+')
+              [ -z "$LINE_NUMBER" ] && continue
+
+              # Check if there's an existing comment on this line
+              EXISTING_COMMENT_ID=$(echo "$EXISTING_COMMENTS" | jq -r --arg path "$file" --argjson line "$LINE_NUMBER" '.[] | select(.path == $path and .line == $line) | .id')
+              if [ -n "$EXISTING_COMMENT_ID" ]; then
+                # Delete existing comment
+                gh api -X DELETE repos/${{ github.repository }}/pulls/comments/$EXISTING_COMMENT_ID
+              fi
+
+              # Add a new review comment
+              gh api -X POST repos/${{ github.repository }}/pulls/${{ github.event.number }}/comments -f body="Updated review comment for $file at line $LINE_NUMBER" -f path="$file" -f line="$LINE_NUMBER"
+            done
+          done
+
+          #   # Post a comment to the pull request
+          #   gh api \
+          #     --method POST \
+          #     -H "Accept: application/vnd.github+json" \
+          #     -H "X-GitHub-Api-Version: 2022-11-28" \
+          #     /repos/${{ github.repository }}/pulls/${{ github.event.number }}/comments \
+          #     -f body="Reviewing changes in $file: $DIFF" \
+          #     -f commit_id=$(git rev-parse HEAD) \
+          #     -f path="$file" \
+          #     -f start_line=1 \
+          #     -f start_side=RIGHT \
+          #     -f line=1 \
+          #     -f side=RIGHT
+          # done
