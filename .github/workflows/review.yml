@@ -68,9 +68,14 @@ jobs:
 
               # Add a new review comment
               echo "Adding new comment to $file at line $LINE_NUMBER"
-              gh api -X POST repos/${{ github.repository }}/pulls/${{ github.event.number }}/comments \
-                -f body="Updated review comment for $file at line $LINE_NUMBER" \
+              gh api \
+                --method POST \
+                -H "Accept: application/vnd.github+json" \
+                -H "X-GitHub-Api-Version: 2022-11-28" \
+                repos/${{ github.repository }}/pulls/${{ github.event.number }}/comments \
                 -f path="$file" \
-                -f line="$LINE_NUMBER"
+                -f line="$LINE_NUMBER"\
+                -f body="Updated review comment for $file at line $LINE_NUMBER" \
+                -f "commit_id=${{ github.sha }}"
             done
           done
