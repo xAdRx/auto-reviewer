@@ -64,7 +64,8 @@ jobs:
               echo "Processing line: $LINE"
 
               # Check if there's an existing comment on this line
-              EXISTING_COMMENT_ID=$(echo "$EXISTING_COMMENTS" | jq -r --arg path "$file"  '.[] | select(.path == $path and .line == $LINE) | .id')
+              EXISTING_COMMENT_ID=$(echo "$EXISTING_COMMENTS" | jq -r --arg path "$file" --argjson line "$LINE" '.[] | select(.path == $path and .line == $line) | .id')
+
               if [ -n "$EXISTING_COMMENT_ID" ]; then
                 # Delete existing comment
                 echo "Deleting existing comment ID: $EXISTING_COMMENT_ID"
