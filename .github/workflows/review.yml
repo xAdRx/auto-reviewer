@@ -19,7 +19,7 @@ jobs:
         run: |
           # Get list of changed files
           CHANGED_FILES=$(gh pr diff ${{ github.event.number }} --name-only)
-          MERGE_COMMIT_SHA=$( gh api \
+          MERGE_COMMIT_SHA=$(gh api \
             -H "Accept: application/vnd.github+json" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
             /repos/${{ github.repository }}/pulls/${{ github.event.number }} | jq -r ".merge_commit_sha")
@@ -54,12 +54,14 @@ jobs:
             EXISTING_COMMENTS=$(gh api repos/${{ github.repository }}/pulls/${{ github.event.number }}/comments)
 
             # Parse the patch for changed lines
-            echo "$PATCH" | grep -E '^@@' | while IFS= read -r diff_header; do
+            while IFS= read -r diff_header; do
               LINE_NUMBER=$(echo "$diff_header" | grep -oP '\+\d+' | tr -d '+')
-              LINE=$(($LINE_NUMBER - 1))
               if [ -z "$LINE_NUMBER" ]; then
                 continue
               fi
+
+              # Calculate the correct line number
+              LINE=$(($LINE_NUMBER - 1))
 
               echo "Processing line: $LINE"
 
@@ -73,7 +75,7 @@ jobs:
               fi
 
               # Add a new review comment
-              echo "Adding new comment to $file at line $LINE"
+              echo "Adding new comment to $file at line $LINE_NUMBER"
               gh api \
                 --method POST \
                 -H "Accept: application/vnd.github+json" \
@@ -84,5 +86,5 @@ jobs:
                 -F "line=$LINE_NUMBER" \
                 -f "side=RIGHT" \
                 -f "path=$file"
-            done
+            done <<< "$PATCH"
           done
