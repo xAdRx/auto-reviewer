@@ -55,15 +55,15 @@ jobs:
 
             # Parse the patch for changed lines
             echo "$PATCH" | grep -E '^@@' | while IFS= read -r diff_header; do
-              LINE_NUMBER=$(echo "$diff_header" | grep -oP '\+\d+' | tr -d '+')
+              LINE_NUMBER=$(echo "$diff_header" | grep -oP '\+\d+' | tr -d '+')-1
               if [ -z "$LINE_NUMBER" ]; then
                 continue
               fi
 
-              echo "Processing line: $LINE_NUMBER with position: $POSITION"
+              echo "Processing line: $LINE_NUMBER"
 
               # Check if there's an existing comment on this line
-              EXISTING_COMMENT_ID=$(echo "$EXISTING_COMMENTS" | jq -r --arg path "$file" --argjson position "$POSITION" '.[] | select(.path == $path and .position == $position) | .id')
+              EXISTING_COMMENT_ID=$(echo "$EXISTING_COMMENTS" | jq -r --arg path "$file"  '.[] | select(.path == $path and .line == $LINE_NUMBER) | .id')
               if [ -n "$EXISTING_COMMENT_ID" ]; then
                 # Delete existing comment
                 echo "Deleting existing comment ID: $EXISTING_COMMENT_ID"
