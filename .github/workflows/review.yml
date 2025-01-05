@@ -67,7 +67,7 @@ jobs:
 
                 echo "Processing lines from $START_LINE to $END_LINE in $file"
 
-                EXISTING_COMMENT_ID=$(echo "$EXISTING_COMMENTS" | jq -r --arg path "$file" --argjson line "$LINE" '.[] | select(.path == $path and .line == $line) | .id')
+                EXISTING_COMMENT_ID=$(echo "$EXISTING_COMMENTS" | jq -r --arg path "$file" --argjson start_line "$START_LINE" '.[] | select(.path == $path and .start_line == $start_line) | .id')
 
                 if [ -n "$EXISTING_COMMENT_ID" ]; then
                   # Update existing comment
