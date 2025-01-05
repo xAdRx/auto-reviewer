@@ -15,7 +15,7 @@ jobs:
 
       - name: Review Changes
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GPT_TOKEN: ${{ secrets.GPT_TOKEN }}
         run: |
           # Get list of changed files
           CHANGED_FILES=$(gh pr diff ${{ github.event.number }} --name-only)
@@ -66,6 +66,28 @@ jobs:
                 fi
 
                 echo "Processing lines from $START_LINE to $END_LINE in $file"
+                CONTENT=$(sed -n "${START_LINE},${END_LINE}p" "$file")
+
+                COMMENT=$(curl https://api.openai.com/v1/chat/completions \
+                  -H "Content-Type: application/json" \
+                  -H "Authorization: Bearer $GPT_TOKEN" \
+                  -d '{
+                      "model": "gpt-4o",
+                      "messages": [
+                        {
+                          "role": "developer",
+                          "content": "You are a helpful developer. Your role is to make a simple code review of provided code. Try to be as simple as possible but remain professional and show the problems"
+                        },
+                        {
+                          "role": "user",
+                          "content": $CONTENT
+                        }
+                      ]
+                    }' | jq -r '.choices.[].message.content')
+
+                echo "Conent of $file for review is $CONTENT"
+                echo "\n\n"
+                echo "Review of the code: $COMMENT"
 
                 # Check if there's an existing comment for this range
                 if [ $START_LINE -eq $END_LINE ];then
@@ -99,7 +121,7 @@ jobs:
                       -H "Accept: application/vnd.github+json" \
                       -H "X-GitHub-Api-Version: 2022-11-28" \
                       repos/${{ github.repository }}/pulls/${{ github.event.number }}/comments \
-                      -f "body=Review comment for $file from lines $START_LINE to $END_LINE" \
+                      -f "body=$COMMENT" \
                       -f "commit_id=${{ github.event.pull_request.head.sha }}" \
                       -F "line=$START_LINE" \
                       -f "side=RIGHT" \
@@ -110,7 +132,7 @@ jobs:
                       -H "Accept: application/vnd.github+json" \
                       -H "X-GitHub-Api-Version: 2022-11-28" \
                       repos/${{ github.repository }}/pulls/${{ github.event.number }}/comments \
-                      -f "body=Review comment for $file from lines $START_LINE to $END_LINE" \
+                      -f "body=$COMMENT" \
                       -f "commit_id=${{ github.event.pull_request.head.sha }}" \
                       -F "start_line=$START_LINE" \
                       -F "line=$END_LINE" \
