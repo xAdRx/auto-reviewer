@@ -20,10 +20,7 @@ jobs:
         run: |
           # Get list of changed files
           CHANGED_FILES=$(gh pr diff ${{ github.event.number }} --name-only)
-          MERGE_COMMIT_SHA=$(gh api \
-            -H "Accept: application/vnd.github+json" \
-            -H "X-GitHub-Api-Version: 2022-11-28" \
-            /repos/${{ github.repository }}/pulls/${{ github.event.number }} | jq -r ".merge_commit_sha")
+
           if [ -z "$CHANGED_FILES" ]; then
             echo "No changed files found. Exiting."
             exit 0
@@ -51,95 +48,38 @@ jobs:
             # Fetch existing comments
             EXISTING_COMMENTS=$(gh api repos/${{ github.repository }}/pulls/${{ github.event.number }}/comments)
 
-            # Parse the patch for changed lines
-            while IFS= read -r diff_header; do
-              # Ensure to capture only lines starting with `@@`
-              if [[ $diff_header =~ ^@@ ]]; then
-                echo $diff_header
-                # Extract start and end line numbers from the diff header
-                START_LINE=$(echo $diff_header | sed -n 's/@@ -\([0-9]*\),[0-9]* +[0-9]*,[0-9]* @@/\1/p' | grep -o '[0-9]\+')
-                START_LINE=$(expr $START_LINE + 3)
+            CONTENT=$(cat $file)
+            COMMENT=$(curl -s https://api.openai.com/v1/chat/completions \
+              -H "Content-Type: application/json" \
+              -H "Authorization: Bearer $GPT_TOKEN" \
+              -d '{
+                  "model": "gpt-4",
+                  "messages": [
+                    {
+                      "role": "system",
+                      "content": "You are a helpful developer. Your role is to make a simple code review of the provided code. Be clear and concise."
+                    },
+                    {
+                      "role": "user",
+                      "content": "'"$CONTENT"'"
+                    }
+                  ]
+                }')
+            COMMENT_TEXT=$(echo "$COMMENT" | jq -r '.choices[0].message.content')
 
-                END_LINE=$(echo $diff_header | sed -n 's/@@ -[0-9]*,[0-9]* +\([0-9]*\),[0-9]* @@/\1/p' | grep -o '[0-9]\+')
-                END_LINE=$(expr $END_LINE + 3)
+            echo "Review of the code: $COMMENT_TEXT"
 
-                if [ -z "$START_LINE" ] || [ -z "$END_LINE" ]; then
-                  continue
-                fi
+            EXISTING_COMMENT_ID=$(echo "$EXISTING_COMMENTS" | jq -r \
+              --arg path "$file" \
+              '.[] | select(.path == $path) | .id')
 
-                echo "Processing lines from $START_LINE to $END_LINE in $file"
-
-                # Extract the content between the START_LINE and END_LINE
-                CONTENT=$(sed -n "${START_LINE},${END_LINE}p" "$file")
-                echo $CONTENT
-
-                # Call the GPT API for code review
-                COMMENT=$(curl -s https://api.openai.com/v1/chat/completions \
-                  -H "Content-Type: application/json" \
-                  -H "Authorization: Bearer $GPT_TOKEN" \
-                  -d '{
-                      "model": "gpt-4",
-                      "messages": [
-                        {
-                          "role": "system",
-                          "content": "You are a helpful developer. Your role is to make a simple code review of the provided code. Be clear and concise."
-                        },
-                        {
-                          "role": "user",
-                          "content": "'"$CONTENT"'"
-                        }
-                      ]
-                    }')
-
-                # Extract the message content from the response
-                COMMENT_TEXT=$(echo "$COMMENT" | jq -r '.choices[0].message.content')
-
-                echo "Review of the code: $COMMENT_TEXT"
-
-                # Check if there's an existing comment for this range
-                EXISTING_COMMENT_ID=$(echo "$EXISTING_COMMENTS" | jq -r \
-                  --arg path "$file" \
-                  --argjson start "$START_LINE" \
-                  --argjson end "$END_LINE" \
-                  '.[] | select(.path == $path and .line >= $start and .line <= $end) | .id')
-
-                if [ -n "$EXISTING_COMMENT_ID" ]; then
-                  # Update existing comment
-                  echo "Updating existing comment ID: $EXISTING_COMMENT_ID"
-                  gh api \
-                    --method PATCH \
-                    -H "Accept: application/vnd.github+json" \
-                    -H "X-GitHub-Api-Version: 2022-11-28" \
-                    repos/${{ github.repository }}/pulls/comments/$EXISTING_COMMENT_ID \
-                    -f "body=$COMMENT_TEXT"
-                else
-                  # Add a new review comment for the entire range
-                  echo "Adding new comment for the range $START_LINE to $END_LINE in $file"
-                  if [ $START_LINE -eq $END_LINE ];then
-                    gh api \
-                      --method POST \
-                      -H "Accept: application/vnd.github+json" \
-                      -H "X-GitHub-Api-Version: 2022-11-28" \
-                      repos/${{ github.repository }}/pulls/${{ github.event.number }}/comments \
-                      -f "body=$COMMENT_TEXT" \
-                      -f "commit_id=${{ github.event.pull_request.head.sha }}" \
-                      -F "line=$START_LINE" \
-                      -f "side=RIGHT" \
-                      -f "path=$file"
-                  else
-                    gh api \
-                      --method POST \
-                      -H "Accept: application/vnd.github+json" \
-                      -H "X-GitHub-Api-Version: 2022-11-28" \
-                      repos/${{ github.repository }}/pulls/${{ github.event.number }}/comments \
-                      -f "body=$COMMENT_TEXT" \
-                      -f "commit_id=${{ github.event.pull_request.head.sha }}" \
-                      -F "start_line=$START_LINE" \
-                      -F "line=$END_LINE" \
-                      -f "side=RIGHT" \
-                      -f "path=$file"
-                  fi
-                fi
-              fi
-            done <<< "$PATCH"
+            gh api \
+              --method POST \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              repos/${{ github.repository }}/pulls/${{ github.event.number }}/comments \
+              -f "body=$COMMENT_TEXT" \
+              -f "commit_id=${{ github.event.pull_request.head.sha }}" \
+              -f "subject_type:file" \
+              -f "path=$file"
           done
