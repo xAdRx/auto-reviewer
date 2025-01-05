@@ -19,6 +19,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           CHANGED_FILES=$(git diff-tree --no-commit-id --name-only -r ${{ github.sha }})
+          echo $CHANGED_FILES
           echo "changed_files=$CHANGED_FILES" >> $GITHUB_ENV
 
       - name: Review Changes
