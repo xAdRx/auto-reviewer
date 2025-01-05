@@ -52,14 +52,15 @@ jobs:
             # Parse the patch for changed lines
             echo "$PATCH" | grep -E '^@@' | while IFS= read -r diff_header; do
               LINE_NUMBER=$(echo "$diff_header" | grep -oP '\+\d+' | tr -d '+')
+              POSITION=$(($LINE_NUMBER - 1))
               if [ -z "$LINE_NUMBER" ]; then
                 continue
               fi
 
-              echo "Processing line: $LINE_NUMBER"
+              echo "Processing line: $LINE_NUMBER with position: $POSITION"
 
-              # Check if there's an existing comment for this line
-              EXISTING_COMMENT_ID=$(echo "$EXISTING_COMMENTS" | jq -r --arg path "$file" --argjson line "$LINE_NUMBER" '.[] | select(.path == $path and .line == $line) | .id')
+              # Check if there's an existing comment on this line
+              EXISTING_COMMENT_ID=$(echo "$EXISTING_COMMENTS" | jq -r --arg path "$file" --argjson position "$POSITION" '.[] | select(.path == $path and .position == $position) | .id')
               if [ -n "$EXISTING_COMMENT_ID" ]; then
                 # Delete existing comment
                 echo "Deleting existing comment ID: $EXISTING_COMMENT_ID"
@@ -76,6 +77,7 @@ jobs:
                 -f path="$file" \
                 -f line="$LINE_NUMBER"\
                 -f body="Updated review comment for $file at line $LINE_NUMBER" \
-                -f "commit_id=${{ github.sha }}"
+                -f "commit_id=${{ github.sha }}"\
+                -f position="$POSITION"
             done
           done
