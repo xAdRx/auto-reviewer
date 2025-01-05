@@ -18,17 +18,11 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Fetch changed files compared to the base branch
-          BASE_SHA=$(git rev-parse origin/${{ github.event.pull_request.base.ref }})
-          HEAD_SHA=$(git rev-parse HEAD)
-
-          echo "Base SHA: $BASE_SHA"
-          echo "Head SHA: $HEAD_SHA"
-
-          CHANGED_FILES=$(git diff --name-only $BASE_SHA $HEAD_SHA)
+          # Get the list of changed files using `gh pr diff`
+          CHANGED_FILES=$(gh pr diff ${{ github.event.number }} --name-only)
           echo "Changed files: $CHANGED_FILES"
 
-          # Save changed files as an environment variable
+          # Save the changed files to an environment variable
           echo "changed_files=$CHANGED_FILES" >> $GITHUB_ENV
 
       - name: Review Changes
