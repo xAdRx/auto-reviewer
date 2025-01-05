@@ -18,8 +18,13 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           CHANGED_FILES=$(gh pr diff ${{ github.event.number }} --name-only)
+          echo "Changed files: $CHANGED_FILES"
           for file in $CHANGED_FILES; do
-            DIFF=$(gh pr diff ${{ github.event.number }} -- "$file")
+            PATCH=$(gh api repos/${{ github.repository }}/pulls/${{ github.event.number }}/files --jq ".[] | select(.filename == \"$file\") | .patch")
+            if [ -z "$PATCH" ]; then
+              echo "No patch found for $file."
+              continue
+            fi
             echo "Diff for $file: $DIFF"
 
             EXISTING_COMMENTS=$(gh api repos/${{ github.repository }}/pulls/${{ github.event.number }}/comments)
