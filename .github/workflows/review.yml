@@ -77,7 +77,6 @@ jobs:
                 -f body="Updated review comment for $file at line $LINE_NUMBER" \
                 -f commit_id="${{ github.sha }}" \
                 -F line=$LINE_NUMBER \
-                -f path="$file" \
-                -F position=$POSITION
+                -f path="$file"
             done
           done
