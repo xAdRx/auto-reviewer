@@ -71,6 +71,7 @@ jobs:
 
                 # Extract the content between the START_LINE and END_LINE
                 CONTENT=$(sed -n "${START_LINE},${END_LINE}p" "$file")
+                echo $CONTENT
 
                 # Call the GPT API for code review
                 COMMENT=$(curl -s https://api.openai.com/v1/chat/completions \
