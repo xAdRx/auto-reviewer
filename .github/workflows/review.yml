@@ -68,8 +68,18 @@ jobs:
                 echo "Processing lines from $START_LINE to $END_LINE in $file"
 
                 # Check if there's an existing comment for this range
-                EXISTING_COMMENT_ID=$(echo "$EXISTING_COMMENTS" | jq -r --arg path "$file" --argjson start "$START_LINE" \
-                  '.[] | select(.path == $path and .line == $start) | .id')
+                if [ $START_LINE -eq $END_LINE ];then
+                  EXISTING_COMMENT_ID=$(echo "$EXISTING_COMMENTS" | jq -r \
+                    --arg path "$file" \
+                    --argjson start "$START_LINE" \
+                    '.[] | select(.path == $path and .line == $start) | .id')
+                else
+                  EXISTING_COMMENT_ID=$(echo "$EXISTING_COMMENTS" | jq -r \
+                    --arg path "$file" \
+                    --argjson start "$START_LINE" \
+                    --argjson end "$END_LINE" \
+                    '.[] | select(.path == $path and .start_line == $start and .end_line == $end) | .id')
+                fi
 
                 if [ -n "$EXISTING_COMMENT_ID" ]; then
                   # Update existing comment
