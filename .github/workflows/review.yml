@@ -88,8 +88,8 @@ jobs:
                     repos/${{ github.repository }}/pulls/${{ github.event.number }}/comments \
                     -f "body=Review comment for $file at line $LINE" \
                     -f "commit_id=${{ github.event.pull_request.head.sha }}" \
+                    -F "line=$END_LINE" \
                     -F "start_line=$START_LINE" \
-                    -F "end_line=$END_LINE" \
                     -f "side=RIGHT" \
                     -f "path=$file"
                 fi
