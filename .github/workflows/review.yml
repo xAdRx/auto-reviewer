@@ -20,7 +20,11 @@ jobs:
           CHANGED_FILES=$(gh pr diff ${{ github.event.number }} --name-only)
           echo "Changed files: $CHANGED_FILES"
           for file in $CHANGED_FILES; do
-            PATCH=$(gh api repos/${{ github.repository }}/pulls/${{ github.event.number }}/files --jq ".[] | select(.filename == \"$file\") | .patch")
+            PATCH=$(gh api \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              repos/${{ github.repository }}/pulls/${{ github.event.number }}/files \
+              --jq ".[] | select(.filename == \"$file\") | .patch")
             if [ -z "$PATCH" ]; then
               echo "No patch found for $file."
               continue
