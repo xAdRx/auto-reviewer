@@ -53,19 +53,19 @@ jobs:
             COMMENT=$(curl -s https://api.openai.com/v1/chat/completions \
               -H "Content-Type: application/json" \
               -H "Authorization: Bearer $GPT_TOKEN" \
-              -d '{
-                  "model": "gpt-4",
-                  "messages": [
-                    {
-                      "role": "system",
-                      "content": "You are a helpful developer. Your role is to make a simple code review of the provided code. Be clear and concise."
-                    },
-                    {
-                      "role": "user",
-                      "content": "'"$CONTENT"'"
-                    }
+              -d "$(jq -n \
+                --arg model "gpt-4" \
+                --arg role "system" \
+                --arg system_message "You are a helpful developer. Your role is to make a simple code review of the provided code. Be clear and concise." \
+                --arg user_message "$CONTENT" \
+                '{
+                  model: $model,
+                  messages: [
+                    {role: $role, content: $system_message},
+                    {role: "user", content: $user_message}
                   ]
-                }')
+                }')"
+            )
             echo $COMMENT
             COMMENT_TEXT=$(echo "$COMMENT" | jq -r '.choices[0].message.content')
 
@@ -74,12 +74,13 @@ jobs:
             EXISTING_COMMENT_ID=$(echo "$EXISTING_COMMENTS" | jq -r \
               --arg path "$file" \
               '.[] | select(.path == $path) | .id')
-
-            gh api \
-              --method DELETE \
-              -H "Accept: application/vnd.github+json" \
-              -H "X-GitHub-Api-Version: 2022-11-28" \
-              /repos/${{ github.repository }}/pulls/comments/$EXISTING_COMMENT_ID
+            if [ -n "$EXISTING_COMMENT_ID" ]; then
+              gh api \
+                --method DELETE \
+                -H "Accept: application/vnd.github+json" \
+                -H "X-GitHub-Api-Version: 2022-11-28" \
+                /repos/${{ github.repository }}/pulls/comments/$EXISTING_COMMENT_ID
+            fi
 
             gh api \
               --method POST \
