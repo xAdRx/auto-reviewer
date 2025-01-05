@@ -49,7 +49,8 @@ jobs:
             EXISTING_COMMENTS=$(gh api repos/${{ github.repository }}/pulls/${{ github.event.number }}/comments)
 
             CONTENT=$(cat $file)
-            COMMENT=$(curl -s https://api.openai.com/v1/chat/completions \
+            echo $CONTENT
+            COMMENT=$(curl -v -s https://api.openai.com/v1/chat/completions \
               -H "Content-Type: application/json" \
               -H "Authorization: Bearer $GPT_TOKEN" \
               -d '{
