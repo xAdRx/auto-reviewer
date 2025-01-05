@@ -56,7 +56,7 @@ jobs:
               -d "$(jq -n \
                 --arg model "gpt-4" \
                 --arg role "system" \
-                --arg system_message "You are a helpful developer. Your role is to make a simple code review of the provided code. Be clear and concise." \
+                --arg system_message "You are a helpful developer. Your role is to make a simple code review of the provided code. Be clear and concise. Last sentence should be if you would already merge or not the code and give a mark for it ranged 0 to 100" \
                 --arg user_message "$CONTENT" \
                 '{
                   model: $model,
