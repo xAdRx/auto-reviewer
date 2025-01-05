@@ -76,7 +76,7 @@ jobs:
                 repos/${{ github.repository }}/pulls/${{ github.event.number }}/comments \
                 -f path="$file" \
                 -f body="Updated review comment for $file at line $LINE_NUMBER" \
-                -f "commit_id=${{ github.sha }}"\
+                -f commit_id="${{ github.sha }}"\
                 -F position=$POSITION
             done
           done
