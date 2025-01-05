@@ -71,23 +71,28 @@ jobs:
                   EXISTING_COMMENT_ID=$(echo "$EXISTING_COMMENTS" | jq -r --arg path "$file" --argjson line "$LINE" '.[] | select(.path == $path and .line == $line) | .id')
 
                   if [ -n "$EXISTING_COMMENT_ID" ]; then
-                    # Delete existing comment
-                    echo "Deleting existing comment ID: $EXISTING_COMMENT_ID"
-                    gh api -X DELETE repos/${{ github.repository }}/pulls/comments/$EXISTING_COMMENT_ID
+                    # Update existing comment
+                    echo "Updating existing comment ID: $EXISTING_COMMENT_ID"
+                    gh api \
+                      --method PATCH \
+                      -H "Accept: application/vnd.github+json" \
+                      -H "X-GitHub-Api-Version: 2022-11-28" \
+                      repos/${{ github.repository }}/pulls/comments/$EXISTING_COMMENT_ID \
+                      -f "body=Resolved review comment for $file at line $LINE"
+                  else
+                    # Add a new review comment
+                    echo "Adding new comment to $file at line $LINE"
+                    gh api \
+                      --method POST \
+                      -H "Accept: application/vnd.github+json" \
+                      -H "X-GitHub-Api-Version: 2022-11-28" \
+                      repos/${{ github.repository }}/pulls/${{ github.event.number }}/comments \
+                      -f "body=Review comment for $file at line $LINE" \
+                      -f "commit_id=${{ github.event.pull_request.head.sha }}" \
+                      -F "line=$LINE" \
+                      -f "side=RIGHT" \
+                      -f "path=$file"
                   fi
-
-                  # Add a new review comment
-                  echo "Adding new comment to $file at line $LINE"
-                  gh api \
-                    --method POST \
-                    -H "Accept: application/vnd.github+json" \
-                    -H "X-GitHub-Api-Version: 2022-11-28" \
-                    repos/${{ github.repository }}/pulls/${{ github.event.number }}/comments \
-                    -f "body=Updated review comment for $file at line $LINE" \
-                    -f "commit_id=${{ github.event.pull_request.head.sha }}" \
-                    -F "line=$LINE" \
-                    -f "side=RIGHT" \
-                    -f "path=$file"
                 done
               fi
             done <<< "$PATCH"
