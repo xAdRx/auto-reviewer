@@ -81,7 +81,7 @@ jobs:
                 else
                   # Add a new review comment
                   echo "Adding new comment to $file at line $LINE"
-                  if [ $START_LINE -eq $END_LINE]; then
+                  if [ $START_LINE -eq $END_LINE ]; then
                     gh api \
                       --method POST \
                       -H "Accept: application/vnd.github+json" \
