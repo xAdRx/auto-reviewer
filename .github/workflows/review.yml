@@ -74,7 +74,7 @@ jobs:
               -H "Content-Type: application/json" \
               -H "Authorization: Bearer $GPT_TOKEN" \
               -d "$(jq -n \
-                --arg model "gpt-4" \
+                --arg model "gpt-4o-mini" \
                 --arg role "system" \
                 --arg system_message "You are a helpful developer. Your role is to make a code review of the provided code. Mark what has to be changed focusing on lines $special_lines. Last sentence should be short summary with mark 0 to 100." \
                 --arg user_message "$content" \
