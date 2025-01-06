@@ -62,7 +62,13 @@ jobs:
                 fi
             done <<< "$git_diff_header"
 
-            content=$(cat $file)
+            if [ -e "$file" ]; then
+              content=$(cat $file)
+            else
+              echo "File does not exist."
+              exit 1
+            fi
+
             comment=$(curl -s https://api.openai.com/v1/chat/completions \
               -H "Content-Type: application/json" \
               -H "Authorization: Bearer $GPT_TOKEN" \
