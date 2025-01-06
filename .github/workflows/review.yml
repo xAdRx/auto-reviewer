@@ -71,6 +71,10 @@ jobs:
               exit 1
             fi
 
+            echo "74. token - $GPT_TOKEN"
+
+            echo "76. content $content"
+
             comment_json=$(curl -s https://api.openai.com/v1/chat/completions \
               -H "Content-Type: application/json" \
               -H "Authorization: Bearer $GPT_TOKEN" \
@@ -86,8 +90,9 @@ jobs:
                     {role: "user", content: $user_message}
                   ]
                 }')")
+            echo "93. comment_json is $comment_json"
             comment_text=$(echo $comment_json | jq -r '.choices[0].message.content')
-            echo "89.Comment text is $comment_text"
+            echo "95.Comment text is $comment_text"
 
             existing_comment_id=$(echo "$(gh api repos/${{ github.repository }}/pulls/${{ github.event.number }}/comments)" | jq -r \
               --arg path "$file" \
