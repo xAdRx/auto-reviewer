@@ -47,23 +47,7 @@ jobs:
 
             # Fetch existing comments
             existing_comments=$(gh api repos/${{ github.repository }}/pulls/${{ github.event.number }}/comments)
-            special_lines=""
-
-            while IFS= read -r diff_header; do
-              # Ensure to capture only lines starting with `@@`
-              if [[ $diff_header =~ ^@@ ]]; then
-                echo $diff_header
-                # Extract start and end line numbers from the diff header
-                start_line=$(echo $diff_header | sed -n 's/@@ -\([0-9]*\),[0-9]* +[0-9]*,[0-9]* @@/\1/p' | grep -o '[0-9]\+')
-                start_line=$(expr $start_line + 3)
-                end_line=$(echo $diff_header | sed -n 's/@@ -[0-9]*,[0-9]* +\([0-9]*\),[0-9]* @@/\1/p' | grep -o '[0-9]\+')
-                end_line=$(expr $end_line + 3)
-                if [ -z "$start_line" ] || [ -z "$end_line" ]; then
-                  continue
-                fi
-                special_lines=$special_lines+", "+$start_line+"-"+$end_line
-              fi
-            done <<< "$patch"
+            special_lines=$(git diff master --unified=0 | grep '^@@' | sed -E 's/@@ -[0-9,]+ \+([0-9]+)(,([0-9]+))? @@.*/\1-\1+\3-1/' | bc)
 
             content=$(cat $file)
             echo $content
