@@ -17,7 +17,7 @@ jobs:
           fetch-depth: 0
 
       - name: Review Changes
-        env:
+        secrets:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GPT_TOKEN: ${{ secrets.GPT_TOKEN }}
         run: |
