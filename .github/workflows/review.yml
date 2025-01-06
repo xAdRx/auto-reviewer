@@ -86,7 +86,7 @@ jobs:
                     {role: "user", content: $user_message}
                   ]
                 }')")
-            comment_text = $(echo $comment_json | jq -r '.choices[0].message.content')
+            comment_text=$(echo $comment_json | jq -r '.choices[0].message.content')
             echo "89.Comment text is $comment_text"
 
             existing_comment_id=$(echo "$(gh api repos/${{ github.repository }}/pulls/${{ github.event.number }}/comments)" | jq -r \
