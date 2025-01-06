@@ -47,14 +47,13 @@ jobs:
 
             # Fetch existing comments
             existing_comments=$(gh api repos/${{ github.repository }}/pulls/${{ github.event.number }}/comments)
-            echo $(gh api repos/${{ github.repository }}/pulls/${{ github.event.number }} \
-              -H "Accept: application/vnd.github.diff" \
-              -H "X-GitHub-Api-Version: 2022-11-28")
+
             special_lines=$(gh api repos/${{ github.repository }}/pulls/${{ github.event.number }} \
               -H "Accept: application/vnd.github.diff" \
               -H "X-GitHub-Api-Version: 2022-11-28" | \
               grep '^@@' | \
-              sed -E 's/@@ -[0-9,]+ \+([0-9]+)(,([0-9]+))? @@.*/\1-\1+\3-1/' | bc)
+              sed -E 's/@@ -([0-9]+),[0-9]+ \+([0-9]+),([0-9]+) @@.*/\1+3 \2/' | bc)
+
             echo "Special lines gh api are: $special_lines"
 
             content=$(cat $file)
