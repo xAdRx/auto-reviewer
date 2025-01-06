@@ -31,10 +31,7 @@ jobs:
           # Fetch JSON data for changed files
           files_json=$(gh api \
             -H "Accept: application/vnd.github+json" \
-            -H "X-GitHub-Api-Version: 2022-11-28" \
             repos/${{ github.repository }}/pulls/${{ github.event.number }}/files)
-
-          echo "Changed files: $changed_files"
 
           # Loop through each changed file
           for file in $changed_files; do
@@ -43,12 +40,8 @@ jobs:
             # Extract patch for the file
             patch=$(echo "$files_json" | jq -r ".[] | select(.filename == \"$file\") | .patch")
             if [ -z "$patch" ]; then
-              echo "No patch found for $file."
               continue
             fi
-
-            # Fetch existing comments
-            existing_comments=$(gh api repos/${{ github.repository }}/pulls/${{ github.event.number }}/comments)
 
             git_diff_header=$(git diff origin/master... --unified=0 | grep '^@@')
             special_lines=""
@@ -59,14 +52,15 @@ jobs:
                 special_line=$(echo "$line" | sed -E 's/.*\+([0-9]+)(,[0-9]+)? .*/\1\2/')
                 if [[ "$special_line" =~ ^[0-9]+,[0-9]+$ ]]; then
                     IFS=',' read -r first_num second_num <<< "$special_line"
+                    if [ $first_num -gt $second_num ]; then
+                      continue
+                    fi
                     to_add=$first_num-$(( first_num + second_num - 1))
                     special_lines=$special_lines$to_add","
                 else
                     special_lines=$special_lines$special_line","
                 fi
             done <<< "$git_diff_header"
-
-            echo $special_lines
 
             content=$(cat $file)
             comment=$(curl -s https://api.openai.com/v1/chat/completions \
@@ -88,21 +82,19 @@ jobs:
 
             comment_text=$(echo "$comment" | jq -r '.choices[0].message.content')
 
-            existing_comment_id=$(echo "$existing_comments" | jq -r \
+            existing_comment_id=$(echo "$(gh api repos/${{ github.repository }}/pulls/${{ github.event.number }}/comments)" | jq -r \
               --arg path "$file" \
               '.[] | select(.path == $path) | .id')
             for comment_id in $existing_comment_id; do
               gh api \
                 --method DELETE \
                 -H "Accept: application/vnd.github+json" \
-                -H "X-GitHub-Api-Version: 2022-11-28" \
                 /repos/${{ github.repository }}/pulls/comments/$comment_id
             done
 
             gh api \
               --method POST \
               -H "Accept: application/vnd.github+json" \
-              -H "X-GitHub-Api-Version: 2022-11-28" \
               repos/${{ github.repository }}/pulls/${{ github.event.number }}/comments \
               -f "body=$comment_text" \
               -f "commit_id=${{ github.event.pull_request.head.sha }}" \
