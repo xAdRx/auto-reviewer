@@ -62,7 +62,7 @@ jobs:
                     special_lines=$special_lines$special_line","
                 fi
             done <<< "$git_diff_header"
-            print "65.Special lines is $special_lines"
+            echo "65.Special lines is $special_lines"
 
             if [ -e "$file" ]; then
               content=$(cat $file)
@@ -86,7 +86,7 @@ jobs:
                     {role: "user", content: $user_message}
                   ]
                 }')" | jq -r '.choices[0].message.content')
-            print "89.Comment text is $comment_text"
+            echo "89.Comment text is $comment_text"
 
             existing_comment_id=$(echo "$(gh api repos/${{ github.repository }}/pulls/${{ github.event.number }}/comments)" | jq -r \
               --arg path "$file" \
