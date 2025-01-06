@@ -12,6 +12,8 @@ jobs:
       pull-requests: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
 
       - name: Review Changes
         env:
@@ -48,52 +50,48 @@ jobs:
             # Fetch existing comments
             existing_comments=$(gh api repos/${{ github.repository }}/pulls/${{ github.event.number }}/comments)
 
-            special_lines=$(gh api repos/${{ github.repository }}/pulls/${{ github.event.number }} \
-              -H "Accept: application/vnd.github.diff" \
-              -H "X-GitHub-Api-Version: 2022-11-28" | \
-              grep '^@@' | \
-              sed -E 's/@@ -([0-9]+),[0-9]+ \+([0-9]+),([0-9]+) @@.*/\1+3 \2/' | bc)
+            special_lines=$(git diff origin/master --unified=0 | grep '^@@' | sed -E 's/@@ -[0-9,]+ \+([0-9]+)(,([0-9]+))? @@.*/\1-\1+(\3?3:1)-1/' | bc)
 
             echo "Special lines gh api are: $special_lines"
 
-            content=$(cat $file)
-            comment=$(curl -s https://api.openai.com/v1/chat/completions \
-              -H "Content-Type: application/json" \
-              -H "Authorization: Bearer $GPT_TOKEN" \
-              -d "$(jq -n \
-                --arg model "gpt-4" \
-                --arg role "system" \
-                --arg system_message "You are a helpful developer. Your role is to make a code review of the provided code. Mark what has to be changed focusing on lines $special_lines. Last sentence should be if you would already merge or not the code and give a mark for it ranged 0 to 100." \
-                --arg user_message "$content" \
-                '{
-                  model: $model,
-                  messages: [
-                    {role: $role, content: $system_message},
-                    {role: "user", content: $user_message}
-                  ]
-                }')"
-            )
+            # content=$(cat $file)
+            # comment=$(curl -s https://api.openai.com/v1/chat/completions \
+            #   -H "Content-Type: application/json" \
+            #   -H "Authorization: Bearer $GPT_TOKEN" \
+            #   -d "$(jq -n \
+            #     --arg model "gpt-4" \
+            #     --arg role "system" \
+            #     --arg system_message "You are a helpful developer. Your role is to make a code review of the provided code. Mark what has to be changed focusing on lines $special_lines. Last sentence should be if you would already merge or not the code and give a mark for it ranged 0 to 100." \
+            #     --arg user_message "$content" \
+            #     '{
+            #       model: $model,
+            #       messages: [
+            #         {role: $role, content: $system_message},
+            #         {role: "user", content: $user_message}
+            #       ]
+            #     }')"
+            # )
 
-            comment_text=$(echo "$comment" | jq -r '.choices[0].message.content')
+            # comment_text=$(echo "$comment" | jq -r '.choices[0].message.content')
 
-            existing_comment_id=$(echo "$existing_comments" | jq -r \
-              --arg path "$file" \
-              '.[] | select(.path == $path) | .id')
-            for comment_id in $existing_comment_id; do
-              gh api \
-                --method DELETE \
-                -H "Accept: application/vnd.github+json" \
-                -H "X-GitHub-Api-Version: 2022-11-28" \
-                /repos/${{ github.repository }}/pulls/comments/$comment_id
-            done
+            # existing_comment_id=$(echo "$existing_comments" | jq -r \
+            #   --arg path "$file" \
+            #   '.[] | select(.path == $path) | .id')
+            # for comment_id in $existing_comment_id; do
+            #   gh api \
+            #     --method DELETE \
+            #     -H "Accept: application/vnd.github+json" \
+            #     -H "X-GitHub-Api-Version: 2022-11-28" \
+            #     /repos/${{ github.repository }}/pulls/comments/$comment_id
+            # done
 
-            gh api \
-              --method POST \
-              -H "Accept: application/vnd.github+json" \
-              -H "X-GitHub-Api-Version: 2022-11-28" \
-              repos/${{ github.repository }}/pulls/${{ github.event.number }}/comments \
-              -f "body=$comment_text" \
-              -f "commit_id=${{ github.event.pull_request.head.sha }}" \
-              -f "subject_type=file" \
-              -f "path=$file"
+            # gh api \
+            #   --method POST \
+            #   -H "Accept: application/vnd.github+json" \
+            #   -H "X-GitHub-Api-Version: 2022-11-28" \
+            #   repos/${{ github.repository }}/pulls/${{ github.event.number }}/comments \
+            #   -f "body=$comment_text" \
+            #   -f "commit_id=${{ github.event.pull_request.head.sha }}" \
+            #   -f "subject_type=file" \
+            #   -f "path=$file"
           done
