@@ -6,6 +6,10 @@ on:
     branches: [ "master" ]
   workflow_dispatch:
 
+env:
+  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  GPT_TOKEN: ${{ secrets.GPT_TOKEN }}
+
 jobs:
   auto-review:
     runs-on: ubuntu-latest
@@ -17,9 +21,6 @@ jobs:
           fetch-depth: 0
 
       - name: Review Changes
-        secrets:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GPT_TOKEN: ${{ secrets.GPT_TOKEN }}
         run: |
           # Get list of changed files
           changed_files=$(gh pr diff ${{ github.event.number }} --name-only)
