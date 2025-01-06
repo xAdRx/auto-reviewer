@@ -47,6 +47,22 @@ jobs:
 
             # Fetch existing comments
             existing_comments=$(gh api repos/${{ github.repository }}/pulls/${{ github.event.number }}/comments)
+            special_lines=""
+
+            while IFS= read -r diff_header; do
+              # Ensure to capture only lines starting with `@@`
+              if [[ $diff_header =~ ^@@ ]]; then
+                echo $diff_header
+                # Extract start and end line numbers from the diff header
+                start_line=$(echo $diff_header | sed -n 's/@@ -\([0-9]*\),[0-9]* +[0-9]*,[0-9]* @@/\1/p' | grep -o '[0-9]\+')
+                start_line=$(expr $start_line + 3)
+                end_line=$(echo $diff_header | sed -n 's/@@ -[0-9]*,[0-9]* +\([0-9]*\),[0-9]* @@/\1/p' | grep -o '[0-9]\+')
+                end_line=$(expr $end_line + 3)
+                if [ -z "$start_line" ] || [ -z "$end_line" ]; then
+                  continue
+                fi
+                special_lines=$special_lines+", from "+$start_line+" to "+$end_line
+            done <<< "$patch"
 
             content=$(cat $file)
             echo $content
@@ -56,7 +72,7 @@ jobs:
               -d "$(jq -n \
                 --arg model "gpt-4" \
                 --arg role "system" \
-                --arg system_message "You are a helpful developer. Your role is to make a simple code review of the provided code. Be clear and concise. Last sentence should be if you would already merge or not the code and give a mark for it ranged 0 to 100" \
+                --arg system_message "You are a helpful developer. Your role is to make a simple code review of the provided code. Be clear and concise. Focus especially on lines $special_lines Last sentence should be if you would already merge or not the code and give a mark for it ranged 0 to 100" \
                 --arg user_message "$content" \
                 '{
                   model: $model,
