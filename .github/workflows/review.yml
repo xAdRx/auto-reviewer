@@ -57,17 +57,16 @@ jobs:
             while IFS= read -r line; do
                 # Process the line with sed to extract either the line number or range (e.g., +15,2 or +21)
                 special_line=$(echo "$line" | sed -E 's/.*\+([0-9]+)(,[0-9]+)? .*/\1\2/')
-                echo "For '$line' it is '$special_line'"
                 if [[ "$special_line" =~ ^[0-9]+,[0-9]+$ ]]; then
                     IFS=',' read -r first_num second_num <<< "$special_line"
-                    echo "First number: $first_num"
-                    echo "Second number: $second_num"
                     to_add=$first_num-$(( first_num + second_num - 1))
                     special_lines=$special_lines$to_add","
                 else
                     special_lines=$special_lines$special_line","
                 fi
             done <<< "$git_diff_header"
+
+            echo $special_lines
 
             # content=$(cat $file)
             # comment=$(curl -s https://api.openai.com/v1/chat/completions \
