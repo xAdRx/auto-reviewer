@@ -90,7 +90,7 @@ jobs:
 
             existing_comment_id=$(echo "$(gh api repos/${{ github.repository }}/pulls/${{ github.event.number }}/comments)" | jq -r \
               --arg path "$file" \
-              '.[] | select(.path == $path) | .id')
+              '.[] | select(.path == $path and .user.login == "github-actions") | .id')
             for comment_id in $existing_comment_id; do
               gh api \
                 --method DELETE \
