@@ -59,7 +59,6 @@ jobs:
             echo "Special lines gh api are: $special_lines"
 
             content=$(cat $file)
-            echo $content
             comment=$(curl -s https://api.openai.com/v1/chat/completions \
               -H "Content-Type: application/json" \
               -H "Authorization: Bearer $GPT_TOKEN" \
@@ -76,10 +75,8 @@ jobs:
                   ]
                 }')"
             )
-            echo $comment
-            comment_text=$(echo "$comment" | jq -r '.choices[0].message.content')
 
-            echo "Review of the code: $comment_text"
+            comment_text=$(echo "$comment" | jq -r '.choices[0].message.content')
 
             existing_comment_id=$(echo "$existing_comments" | jq -r \
               --arg path "$file" \
