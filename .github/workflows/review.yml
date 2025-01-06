@@ -88,14 +88,11 @@ jobs:
 
             # comment_text=$(echo "$comment" | jq -r '.choices[0].message.content')
 
-            comment_text="blabla"
-
-            existing_comments=$(gh api repos/${{ github.repository }}/pulls/${{ github.event.number }}/comments)
-            echo $existing_comments
+            comment_text="blabla2"
 
             existing_comment_id=$(echo "$(gh api repos/${{ github.repository }}/pulls/${{ github.event.number }}/comments)" | jq -r \
               --arg path "$file" \
-              '.[] | select(.path == $path and .user.login == "github-actions") | .id')
+              '.[] | select(.path == $path and .user.login == "github-actions[bot]") | .id')
             for comment_id in $existing_comment_id; do
               gh api \
                 --method DELETE \
