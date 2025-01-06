@@ -61,7 +61,7 @@ jobs:
                 if [ -z "$start_line" ] || [ -z "$end_line" ]; then
                   continue
                 fi
-                special_lines=$special_lines+", from "+$start_line+" to "+$end_line
+                special_lines=$special_lines+", "+$start_line+"-"+$end_line
               fi
             done <<< "$patch"
 
@@ -73,7 +73,7 @@ jobs:
               -d "$(jq -n \
                 --arg model "gpt-4" \
                 --arg role "system" \
-                --arg system_message "You are a helpful developer. Your role is to make a simple code review of the provided code. Be clear and concise. Focus especially on lines $special_lines Last sentence should be if you would already merge or not the code and give a mark for it ranged 0 to 100" \
+                --arg system_message "You are a helpful developer. Your role is to make a code review of the provided code. Mark what has to be changed focusing on lines $special_lines. Last sentence should be if you would already merge or not the code and give a mark for it ranged 0 to 100." \
                 --arg user_message "$content" \
                 '{
                   model: $model,
