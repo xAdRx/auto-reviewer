@@ -62,6 +62,7 @@ jobs:
                     special_lines=$special_lines$special_line","
                 fi
             done <<< "$git_diff_header"
+            print "65.Special lines is $special_lines"
 
             if [ -e "$file" ]; then
               content=$(cat $file)
@@ -70,7 +71,7 @@ jobs:
               exit 1
             fi
 
-            comment_text=$(curl -s https://api.openai.com/v1/chat/completions \
+            comment_text=$(curl https://api.openai.com/v1/chat/completions \
               -H "Content-Type: application/json" \
               -H "Authorization: Bearer $GPT_TOKEN" \
               -d "$(jq -n \
@@ -85,6 +86,7 @@ jobs:
                     {role: "user", content: $user_message}
                   ]
                 }')" | jq -r '.choices[0].message.content')
+            print "89.Comment text is $comment_text"
 
             existing_comment_id=$(echo "$(gh api repos/${{ github.repository }}/pulls/${{ github.event.number }}/comments)" | jq -r \
               --arg path "$file" \
@@ -97,6 +99,7 @@ jobs:
             done
 
             gh api \
+              --silent \
               --method POST \
               -H "Accept: application/vnd.github+json" \
               repos/${{ github.repository }}/pulls/${{ github.event.number }}/comments \
