@@ -69,24 +69,29 @@ jobs:
               exit 1
             fi
 
-            comment=$(curl -s https://api.openai.com/v1/chat/completions \
-              -H "Content-Type: application/json" \
-              -H "Authorization: Bearer $GPT_TOKEN" \
-              -d "$(jq -n \
-                --arg model "gpt-4" \
-                --arg role "system" \
-                --arg system_message "You are a helpful developer. Your role is to make a code review of the provided code. Mark what has to be changed focusing on lines $special_lines. Last sentence should be if you would already merge or not the code and give a mark for it ranged 0 to 100." \
-                --arg user_message "$content" \
-                '{
-                  model: $model,
-                  messages: [
-                    {role: $role, content: $system_message},
-                    {role: "user", content: $user_message}
-                  ]
-                }')"
-            )
+            # comment=$(curl -s https://api.openai.com/v1/chat/completions \
+            #   -H "Content-Type: application/json" \
+            #   -H "Authorization: Bearer $GPT_TOKEN" \
+            #   -d "$(jq -n \
+            #     --arg model "gpt-4" \
+            #     --arg role "system" \
+            #     --arg system_message "You are a helpful developer. Your role is to make a code review of the provided code. Mark what has to be changed focusing on lines $special_lines. Last sentence should be short summary with mark 0 to 100." \
+            #     --arg user_message "$content" \
+            #     '{
+            #       model: $model,
+            #       messages: [
+            #         {role: $role, content: $system_message},
+            #         {role: "user", content: $user_message}
+            #       ]
+            #     }')"
+            # )
 
-            comment_text=$(echo "$comment" | jq -r '.choices[0].message.content')
+            # comment_text=$(echo "$comment" | jq -r '.choices[0].message.content')
+
+            comment_text="blabla"
+
+            existing_comments=$(gh api repos/${{ github.repository }}/pulls/${{ github.event.number }}/comments)
+            echo $existing_comments
 
             existing_comment_id=$(echo "$(gh api repos/${{ github.repository }}/pulls/${{ github.event.number }}/comments)" | jq -r \
               --arg path "$file" \
