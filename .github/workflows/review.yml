@@ -71,11 +71,11 @@ jobs:
               exit 1
             fi
 
-            comment_text=$(curl https://api.openai.com/v1/chat/completions \
+            comment_json=$(curl -s https://api.openai.com/v1/chat/completions \
               -H "Content-Type: application/json" \
               -H "Authorization: Bearer $GPT_TOKEN" \
               -d "$(jq -n \
-                --arg model "gpt-4" \
+                --arg model "gpt-4o-mini" \
                 --arg role "system" \
                 --arg system_message "You are a helpful developer. Your role is to make a code review of the provided code. Mark what has to be changed focusing on lines $special_lines. Last sentence should be short summary with mark 0 to 100." \
                 --arg user_message "$content" \
@@ -85,7 +85,8 @@ jobs:
                     {role: $role, content: $system_message},
                     {role: "user", content: $user_message}
                   ]
-                }')" | jq -r '.choices[0].message.content')
+                }')")
+            comment_text = $(echo $comment_json | jq -r '.choices[0].message.content')
             echo "89.Comment text is $comment_text"
 
             existing_comment_id=$(echo "$(gh api repos/${{ github.repository }}/pulls/${{ github.event.number }}/comments)" | jq -r \
